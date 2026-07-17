@@ -190,6 +190,7 @@ const fn reason_name(reason: CommentReason) -> &'static str {
         CommentReason::BacktrackedMove => "backtracked_move",
         CommentReason::NoLegalMove => "no_legal_move",
         CommentReason::UnparsedTail => "unparsed_tail",
+        CommentReason::ExactPly => "exact_ply",
     }
 }
 

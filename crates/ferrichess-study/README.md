@@ -72,6 +72,20 @@ arbitrary starting position. For a variation found in prose, use
 explicitly numbered move sequence; this is an advanced tree-building option,
 not part of the normal conversion path.
 
+An exact-ply comment directive can attach machine-readable PGN annotations or
+prose without interrupting the mainline move text:
+
+```text
+1. e4 e5 2. Nf3 Nc6
+@@PlyComment@@1@@[%cal Ge2e4]
+@@PlyComment@@2@@[%csl Re4]
+```
+
+Ply zero is the initial position, ply one is the position after White's first
+move, and so on. Directives may appear anywhere in the input and must target an
+existing mainline ply. They are especially useful for PGN graphical annotation
+commands such as `[%cal ...]` (arrows) and `[%csl ...]` (colored squares).
+
 ## Conversion model and API boundary
 
 `convert_single_raw` is the stable, convenient boundary for a single study:

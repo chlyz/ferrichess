@@ -24,6 +24,8 @@ pub enum CommentReason {
     NoLegalMove,
     /// Legal moves were followed by text that could not be parsed as moves.
     UnparsedTail,
+    /// The line explicitly attaches a comment to an exact mainline ply.
+    ExactPly,
 }
 
 /// The position-aware classification of one raw source line.
@@ -101,12 +103,22 @@ impl RawTreeBuilder {
         let mut nodes_by_ply = vec![tree.root()];
         let mut current_node = Some(tree.root());
         let mut records = Vec::new();
+        let mut exact_ply_comments = Vec::new();
         let maximum_ply = self.maximum_ply();
 
         for (line_index, original) in source_lines.iter().copied().enumerate() {
             let stripped = original.trim();
             let classification = if stripped.is_empty() {
                 ClassifiedRawLine::Blank
+            } else if let Some((ply, text)) = parse_ply_comment_directive(stripped) {
+                exact_ply_comments.push((line_index + 1, ply, text.to_owned()));
+                ClassifiedRawLine::Comment {
+                    text: text.to_owned(),
+                    reason: CommentReason::ExactPly,
+                    starting_ply: Some(ply),
+                    moves: Vec::new(),
+                    leftover: String::new(),
+                }
             } else if self.parser.has_instructional_null_move(stripped) {
                 let normalized = self.parser.normalize_comment_text(
                     stripped,
@@ -253,6 +265,18 @@ impl RawTreeBuilder {
                 original: original.to_owned(),
                 classification,
             });
+        }
+
+        for (line_number, ply, text) in exact_ply_comments {
+            if let Some(&node) = nodes_by_ply.get(ply as usize) {
+                self.attach_comment(&mut tree, Some(node), &text)?;
+            } else if maximum_ply.is_none_or(|limit| ply <= limit) {
+                return Err(TreeError::PlyCommentOutOfBounds {
+                    line_number,
+                    ply,
+                    available_plies: nodes_by_ply.len().saturating_sub(1) as u32,
+                });
+            }
         }
 
         tree.validate()?;
@@ -440,6 +464,12 @@ fn position_ply(position: &Chess) -> u32 {
     (position.fullmoves().get() - 1) * 2 + u32::from(position.turn().is_black())
 }
 
+fn parse_ply_comment_directive(line: &str) -> Option<(u32, &str)> {
+    let remainder = line.strip_prefix("@@PlyComment@@")?;
+    let (ply, text) = remainder.split_once("@@")?;
+    Some((ply.parse().ok()?, text))
+}
+
 #[cfg(test)]
 mod tests {
     use shakmaty::{Chess, Position, san::SanPlus};
@@ -523,6 +553,51 @@ mod tests {
             built.tree.node(ids[3]).unwrap().annotations(),
             &[Annotation::Dubious].into_iter().collect()
         );
+    }
+
+    #[test]
+    fn attaches_exact_ply_comments_without_splitting_a_black_mainline() {
+        let built = RawTreeBuilder::new(RepertoireSide::Black)
+            .build(concat!(
+                "1. e4 1... c6 2. d4 d5\n",
+                "@@PlyComment@@1@@[%cal Ge2e4]\n",
+                "@@PlyComment@@2@@[%csl Rc6]"
+            ))
+            .unwrap();
+        assert_eq!(mainline_sans(&built.tree), ["e4", "c6", "d4", "d5"]);
+        let e4 = built.tree.traverse().nth(1).unwrap();
+        let c6 = built.tree.traverse().nth(2).unwrap();
+        assert_eq!(
+            built.tree.node(e4).unwrap().comments()[0].as_str(),
+            "[%cal Ge2e4]"
+        );
+        assert_eq!(
+            built.tree.node(c6).unwrap().comments()[0].as_str(),
+            "[%csl Rc6]"
+        );
+        assert!(matches!(
+            built.lines[1].classification,
+            ClassifiedRawLine::Comment {
+                reason: CommentReason::ExactPly,
+                starting_ply: Some(1),
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn rejects_an_exact_ply_comment_beyond_the_mainline() {
+        let error = RawTreeBuilder::new(RepertoireSide::White)
+            .build("1. e4 e5\n@@PlyComment@@3@@[%cal Ge2e4]")
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            crate::tree::TreeError::PlyCommentOutOfBounds {
+                line_number: 2,
+                ply: 3,
+                available_plies: 2
+            }
+        ));
     }
 
     #[test]

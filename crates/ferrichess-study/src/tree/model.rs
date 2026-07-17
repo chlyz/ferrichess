@@ -265,6 +265,11 @@ pub enum TreeError {
     },
     MissingMove(NodeId),
     UnreachableNode(NodeId),
+    PlyCommentOutOfBounds {
+        line_number: usize,
+        ply: u32,
+        available_plies: u32,
+    },
 }
 
 impl fmt::Display for TreeError {
@@ -299,6 +304,14 @@ impl fmt::Display for TreeError {
             Self::UnreachableNode(node) => {
                 write!(formatter, "node {} is unreachable", node.index())
             }
+            Self::PlyCommentOutOfBounds {
+                line_number,
+                ply,
+                available_plies,
+            } => write!(
+                formatter,
+                "line {line_number} targets ply {ply}, but the mainline has {available_plies} plies"
+            ),
         }
     }
 }
