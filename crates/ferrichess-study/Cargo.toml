@@ -4,10 +4,11 @@ version = "0.1.0"
 edition = "2024"
 description = "Parse compact chess study text into validated move trees and deterministic PGN"
 readme = "README.md"
+license = "GPL-3.0-or-later"
 documentation = "https://docs.rs/ferrichess-study"
 keywords = ["chess", "pgn", "study", "parser"]
 categories = ["games", "parser-implementations"]
-include = ["/Cargo.toml", "/README.md", "/src/**"]
+include = ["/Cargo.toml", "/LICENSE", "/README.md", "/src/**"]
 
 [dependencies]
 serde = { version = "1.0.228", features = ["derive"] }

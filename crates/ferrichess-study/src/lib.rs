@@ -1,4 +1,32 @@
-//! Core types for converting compact chess study text into move trees and PGN.
+//! Convert compact chess study text into validated move trees and deterministic
+//! PGN.
+//!
+//! The normal conversion path is [`convert_single_raw`] followed by
+//! [`PgnWriter::render`]:
+//!
+//! ```
+//! use ferrichess_study::{
+//!     convert_single_raw, PgnWriter, RepertoireRole, RepertoireSide,
+//!     SingleRawMetadata,
+//! };
+//!
+//! let metadata = SingleRawMetadata {
+//!     course_title: "Example study".to_owned(),
+//!     event: "Open games".to_owned(),
+//!     chapter_slug: "open-games".to_owned(),
+//!     index: "001".to_owned(),
+//!     repertoire_side: RepertoireSide::White,
+//!     repertoire_role: RepertoireRole::Main,
+//! };
+//!
+//! let document = convert_single_raw("1. e4e52. Nf3Nc6", &metadata)?;
+//! let pgn = PgnWriter::render(&document)?;
+//! assert!(pgn.contains("1. e4 e5 2. Nf3 Nc6 *"));
+//! # Ok::<(), ferrichess_study::PgnError>(())
+//! ```
+//!
+//! See the crate README for the compact input format, conversion model, and
+//! pre-1.0 compatibility policy.
 
 pub mod course;
 pub mod diagnostics;

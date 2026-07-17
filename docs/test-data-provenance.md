@@ -1,12 +1,7 @@
 # Test-data provenance
 
-Ferrichess tests must not contain text or move sequences copied from private,
-licensed, or otherwise unverified chess-study material.
-
-## Lichess Open Database seed games
-
 The legal move seeds in `ferrichess-study/src/test_support.rs` come from the
-official [Lichess Open Database][database] export:
+CC0 [Lichess Open Database][database] export:
 
 ```text
 URL:      https://database.lichess.org/standard/lichess_db_standard_rated_2013-01.pgn.zst
@@ -14,10 +9,8 @@ SHA-256:  aa40b3671fa3cf1072eb182892cd90b0e1e003a4a5943492f64b77e7f3fd1635
 License:  CC0 1.0 Universal
 ```
 
-The database page states that its exports may be downloaded, modified, and
-redistributed under CC0. The compressed export is not stored in this repository.
-Only the following prefixes are copied, with game headers and player names
-discarded:
+The compressed export, game headers, and player names are not stored in this
+repository. Only these prefixes are copied:
 
 | Seed | Game URL | Prefix |
 | --- | --- | --- |
@@ -27,12 +20,12 @@ discarded:
 | `CARO_KANN_PREFIX` | `https://lichess.org/rklpc7mk` | `1. e4 c6 2. Nc3 d5 3. Qf3 dxe4 4. Nxe4 Nd7` |
 | `ENGLUND_PREFIX` | `https://lichess.org/9opx3qh7` | `1. d4 e5 2. dxe5 d6 3. exd6 Bxd6 4. Nf3 Nf6` |
 
-## Derivation rule
+## Synthetic test fixtures
 
-Tests may compact whitespace, add move-number glue, append independently
-authored comments or annotations, truncate a prefix, or create an explicitly
-tested alternative branch. They must retain the semantic condition under test.
-They must not copy commentary, annotations, branches, or prose from any source
-game or course.
+Every other chess sequence, FEN, comment, annotation, malformed fragment,
+expected SAN/PGN string, UCI string, position key, metadata value, and
+documentation example is synthetic and authored for Ferrichess. Tests may
+compact or truncate a listed prefix and add test-specific branches, comments,
+or annotations; they do not copy source-game commentary or annotations.
 
 [database]: https://database.lichess.org/
