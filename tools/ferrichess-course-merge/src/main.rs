@@ -3,7 +3,7 @@ use std::{
     env,
     error::Error,
     fs,
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
 };
 
 use ferrichess_config::Config;
@@ -25,9 +25,12 @@ struct Manifest {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct Group {
     id: String,
     title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    repertoire_side: Option<RepertoireSide>,
     chapters: Vec<String>,
 }
 
@@ -76,13 +79,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     let manifest: Manifest = serde_json::from_str(&fs::read_to_string(&manifest_path)?)?;
     validate_manifest(&manifest, &source_root)?;
     let config = Config::load_default()?;
-    let annotator = config.lichess.username.as_deref();
+    let annotator = config.lichess.username.as_deref().map(lichess_annotator);
 
     let mut documents = Vec::new();
     let mut conflicts = Vec::new();
     for group in &manifest.groups {
+        let repertoire_side = group.repertoire_side.unwrap_or(manifest.repertoire_side);
         let mut tree = MoveTree::new();
-        let mut merger = MoveTreeMerger::new(manifest.repertoire_side);
+        let mut merger = MoveTreeMerger::new(repertoire_side);
         let mut group_conflicts = Vec::new();
         for chapter in &group.chapters {
             let path = source_root.join(chapter).join(format!("{chapter}.pgn"));
@@ -116,8 +120,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             aggregate_headers(
                 group,
                 &manifest.course_title,
-                manifest.repertoire_side,
-                annotator,
+                repertoire_side,
+                annotator.as_deref(),
             ),
             tree,
             "*",
@@ -142,7 +146,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let report = Report {
         course_id: &manifest.course_id,
-        source_root: source_root.display().to_string(),
+        source_root: relative_source_root(&source_root, &output_root)?,
         groups: &manifest.groups,
         outputs,
         conflicts,
@@ -164,6 +168,43 @@ fn main() -> Result<(), Box<dyn Error>> {
         output_root.display()
     );
     Ok(())
+}
+
+fn relative_source_root(source_root: &Path, output_root: &Path) -> Result<String, Box<dyn Error>> {
+    let source_root = fs::canonicalize(source_root)?;
+    let output_root = fs::canonicalize(output_root)?;
+    relative_path(&source_root, &output_root)
+        .map(|path| path.display().to_string())
+        .ok_or_else(|| "source and output directories have no portable relative path".into())
+}
+
+fn lichess_annotator(username: &str) -> String {
+    format!("https://lichess.org/@/{}", username.trim())
+}
+
+fn relative_path(path: &Path, base: &Path) -> Option<PathBuf> {
+    let path_components: Vec<Component<'_>> = path.components().collect();
+    let base_components: Vec<Component<'_>> = base.components().collect();
+    if path_components.first() != base_components.first() {
+        return None;
+    }
+
+    let common = path_components
+        .iter()
+        .zip(&base_components)
+        .take_while(|(path, base)| path == base)
+        .count();
+    let mut relative = PathBuf::new();
+    for _ in common..base_components.len() {
+        relative.push("..");
+    }
+    for component in &path_components[common..] {
+        relative.push(component.as_os_str());
+    }
+    if relative.as_os_str().is_empty() {
+        relative.push(".");
+    }
+    Some(relative)
 }
 
 fn validate_manifest(manifest: &Manifest, source_root: &Path) -> Result<(), Box<dyn Error>> {
@@ -282,6 +323,7 @@ fn aggregate_headers(
     headers.insert("Black", course_title);
     headers.insert("Result", "*");
     headers.insert("Chapter", &group.title);
+    headers.insert("ChapterName", &group.title);
     headers.insert("SourceCourse", course_title);
     headers.insert("Orientation", side);
     headers.insert("RepertoireSide", side);
@@ -290,4 +332,66 @@ fn aggregate_headers(
         headers.insert("Annotator", annotator);
     }
     headers
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Group, aggregate_headers, lichess_annotator, relative_path};
+    use ferrichess_study::RepertoireSide;
+    use std::path::Path;
+
+    #[test]
+    fn report_source_path_is_relative_to_its_output_directory() {
+        let source = Path::new("/home/user/chess/chessable/sielecki__course");
+        let output = Path::new("/home/user/chess/repertoires/white/sielecki-merged");
+
+        assert_eq!(
+            relative_path(source, output).as_deref(),
+            Some(Path::new("../../../chessable/sielecki__course"))
+        );
+    }
+
+    #[test]
+    fn annotator_is_the_configured_lichess_profile() {
+        assert_eq!(lichess_annotator("lyzell"), "https://lichess.org/@/lyzell");
+    }
+
+    #[test]
+    fn group_accepts_a_chapter_specific_repertoire_side() {
+        let group: Group = serde_json::from_str(
+            r#"{
+                "id": "black-italian",
+                "title": "8a) Italian",
+                "repertoireSide": "Black",
+                "chapters": ["black-italian"]
+            }"#,
+        )
+        .unwrap();
+
+        assert_eq!(group.repertoire_side, Some(RepertoireSide::Black));
+    }
+
+    #[test]
+    fn lichess_headers_preserve_title_orientation_and_annotator() {
+        let group = Group {
+            id: "black-italian".to_owned(),
+            title: "8a) Italian".to_owned(),
+            repertoire_side: Some(RepertoireSide::Black),
+            chapters: vec!["black-italian".to_owned()],
+        };
+
+        let headers = aggregate_headers(
+            &group,
+            "Example course",
+            RepertoireSide::Black,
+            Some("https://lichess.org/@/lyzell"),
+        );
+
+        assert_eq!(headers.get("ChapterName"), Some("8a) Italian"));
+        assert_eq!(headers.get("Orientation"), Some("Black"));
+        assert_eq!(
+            headers.get("Annotator"),
+            Some("https://lichess.org/@/lyzell")
+        );
+    }
 }
