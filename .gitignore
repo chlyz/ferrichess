@@ -1,1 +1,3 @@
 /target/
+*.fen.sqlite3
+*.fen.sqlite3-*

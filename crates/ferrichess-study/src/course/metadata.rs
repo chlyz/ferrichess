@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, error::Error, fmt};
 use serde::{Deserialize, Deserializer, Serialize, de};
 use serde_json::Value;
 
-use crate::RepertoireSide;
+use crate::{RepertoireRole, RepertoireSide};
 
 const CURRENT_SCHEMA_VERSION: u64 = 1;
 
@@ -91,6 +91,9 @@ impl CourseMetadata {
         for chapter in &self.chapters {
             require_text("chapters[].id", &chapter.id)?;
             require_text("chapters[].title", &chapter.title)?;
+            if let Some(label) = &chapter.repertoire_label {
+                require_text("chapters[].repertoireLabel", label)?;
+            }
             if !chapter_ids.insert(&chapter.id) {
                 return Err(MetadataError::Invalid(format!(
                     "duplicate chapter id {:?}",
@@ -180,6 +183,15 @@ pub struct ChapterMetadata {
     pub title: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// Overrides the course-wide repertoire side for this chapter.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repertoire_side: Option<RepertoireSide>,
+    /// Determines whether this chapter contributes to a side-full tree.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repertoire_role: Option<RepertoireRole>,
+    /// Optional human-readable identity for a family of alternative chapters.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repertoire_label: Option<String>,
     #[serde(flatten)]
     pub extensions: Extensions,
 }
@@ -340,6 +352,38 @@ mod tests {
                 .chapters["defence"]
                 .id,
             "chapter-001"
+        );
+    }
+
+    #[test]
+    fn parses_explicit_chapter_repertoire_classification() {
+        let metadata = CourseMetadata::from_json(
+            r#"{
+                "schemaVersion": 1,
+                "course": {"id":"course", "title":"Course", "kind":"repertoire"},
+                "chapters": [{
+                    "id":"choice",
+                    "title":"Choice",
+                    "repertoireSide":"Black",
+                    "repertoireRole":"alternative",
+                    "repertoireLabel":"Two Knights 4...h6"
+                }],
+                "repertoire":{"side":"White"}
+            }"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            metadata.chapters[0].repertoire_side,
+            Some(RepertoireSide::Black)
+        );
+        assert_eq!(
+            metadata.chapters[0].repertoire_role,
+            Some(crate::RepertoireRole::Alternative)
+        );
+        assert_eq!(
+            metadata.chapters[0].repertoire_label.as_deref(),
+            Some("Two Knights 4...h6")
         );
     }
 

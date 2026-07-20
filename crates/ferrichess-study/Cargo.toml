@@ -8,6 +8,7 @@ license = "GPL-3.0-or-later"
 documentation = "https://docs.rs/ferrichess-study"
 keywords = ["chess", "pgn", "study", "parser"]
 categories = ["games", "parser-implementations"]
+publish = false
 include = ["/Cargo.toml", "/LICENSE", "/README.md", "/src/**"]
 
 [dependencies]

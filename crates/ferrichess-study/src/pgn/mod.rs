@@ -98,6 +98,16 @@ impl PgnDocument {
         }
     }
 
+    /// Creates a PGN document from an already validated move tree.
+    pub fn from_tree(
+        headers: Headers,
+        tree: MoveTree,
+        result: impl Into<String>,
+    ) -> Result<Self, PgnError> {
+        tree.validate()?;
+        Ok(Self::new(headers, tree, result))
+    }
+
     #[must_use]
     pub const fn headers(&self) -> &Headers {
         &self.headers
@@ -147,6 +157,8 @@ pub fn convert_single_raw(
         "RepertoireRole",
         match metadata.repertoire_role {
             RepertoireRole::Main => "Main",
+            RepertoireRole::Quickstarter => "Quickstarter",
+            RepertoireRole::Alternative => "Alternative",
             RepertoireRole::Variant => "Variant",
         },
     );

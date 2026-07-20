@@ -1,8 +1,8 @@
 # Contributing to Ferrichess
 
-Thank you for considering a contribution. Ferrichess is currently pre-1.0, so
-please discuss a substantial API, format, or metadata-schema change before
-investing in an implementation.
+Thank you for considering a contribution. Ferrichess is currently pre-1.0 and
+developed publicly without crates.io releases, so please discuss a substantial
+API, format, or metadata-schema change before investing in an implementation.
 
 ## Local setup
 
@@ -14,9 +14,9 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace
 ```
 
-Run `cargo package --manifest-path crates/ferrichess-study/Cargo.toml` when a
-change affects the crate manifest, included files, README, license, or other
-packaging-relevant material.
+All workspace packages must set `publish = false`. Do not run `cargo publish`
+or prepare a crates.io release unless the repository has explicitly adopted a
+release process.
 
 ## Changes and tests
 
@@ -25,9 +25,12 @@ or network access. Preserve deterministic PGN rendering and position-aware
 move validation. Add focused tests for changed behavior, including malformed
 or ambiguous input where relevant.
 
-Only add redistributable material. Do not commit captured studies, private
-collections, private paths, platform-specific source material, credentials, or
-test data with uncertain provenance. Document external chess seeds in
+Only add redistributable material. Do not commit captured studies, downloaded
+player-game archives, personal reports, private collections, usernames,
+absolute home-directory paths, platform-specific source material, credentials,
+browser-session data, or test data with uncertain provenance. Keep personal
+game databases and reports outside this repository. Document every external
+chess seed retained for tests in
 [docs/test-data-provenance.md](docs/test-data-provenance.md).
 
 ## Commit messages

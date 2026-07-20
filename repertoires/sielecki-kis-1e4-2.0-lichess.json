@@ -1,0 +1,99 @@
+{
+  "courseId": "sielecki-kis-1e4-2.0-lichess",
+  "courseTitle": "Keep It Simple: 1.e4 2.0 — Lichess edition",
+  "repertoireSide": "White",
+  "groups": [
+    {
+      "id": "01-ruy-lopez",
+      "title": "Ruy Lopez",
+      "chapters": [
+        "white-open-games-introduction-overview",
+        "white-ruy-lopez-defenses-with-an-early-bc5",
+        "white-ruy-lopez-defenses-with-an-early-d6",
+        "white-ruy-lopez-jaenisch-schliemann-gambit-3-f5",
+        "white-ruy-lopez-odds-ends",
+        "white-ruy-lopez-berlin-defense",
+        "white-ruy-lopez-3-a6-4-ba4-nf6-5-d3-sidelines",
+        "white-ruy-lopez-3-a6-4-ba4-nf6-5-d3-b5-6-bb3-bc5",
+        "white-ruy-lopez-3-a6-4-ba4-nf6-5-d3-b5-6-bb3-be7"
+      ]
+    },
+    {
+      "id": "02-petroff",
+      "title": "Petroff Defense",
+      "chapters": [
+        "white-petroff-defense"
+      ]
+    },
+    {
+      "id": "03-open-sidelines",
+      "title": "Open Games: Sidelines",
+      "chapters": [
+        "white-1-e4-e5-2-nf3-sidelines"
+      ]
+    },
+    {
+      "id": "04-sicilian",
+      "title": "Sicilian: Moscow, Rossolimo and 2...e6",
+      "chapters": [
+        "white-sicilian-introduction-overview",
+        "white-sicilian-moscow-3-bd7",
+        "white-sicilian-moscow-3-nd7",
+        "white-sicilian-rossolimo-3-g6",
+        "white-sicilian-rossolimo-3-e6-3-d6",
+        "white-sicilian-rossolimo-sidelines",
+        "white-sicilian-2-e6-3-c3-d5-other-3rd-moves",
+        "white-sicilian-2-e6-3-c3-nf6",
+        "white-sicilian-2-nf3-sidelines"
+      ]
+    },
+    {
+      "id": "05-french",
+      "title": "French: Tarrasch",
+      "chapters": [
+        "white-french-introduction-overview",
+        "white-french-tarrasch-3-nf6",
+        "white-french-tarrasch-3-c5",
+        "white-french-tarrasch-3-nd2-sidelines"
+      ]
+    },
+    {
+      "id": "06-caro-kann",
+      "title": "Caro-Kann: Exchange Variation",
+      "chapters": [
+        "white-caro-kann-introduction-overview",
+        "white-caro-kann-exchange-variation-sidelines",
+        "white-caro-kann-exchange-variation-main-line"
+      ]
+    },
+    {
+      "id": "07-scandinavian",
+      "title": "Scandinavian",
+      "chapters": [
+        "white-scandinavian-introduction-overview",
+        "white-scandinavian-3-qa5",
+        "white-scandinavian-3-qd6-3-qd8",
+        "white-scandinavian-2-nf6"
+      ]
+    },
+    {
+      "id": "08-pirc-modern",
+      "title": "Pirc and Modern",
+      "chapters": [
+        "white-1-d6-1-g6-introduction-overview",
+        "white-1-d6-1-g6-pirc-defense",
+        "white-1-d6-1-g6-modern-defense",
+        "white-1-d6-1-g6-1-d6-2-d4-nf6-3-nc3-sidelines"
+      ]
+    },
+    {
+      "id": "09-rare-sidelines",
+      "title": "Rare Defenses: Alekhine, Owen and Nimzowitsch",
+      "chapters": [
+        "white-1-e4-sidelines-introduction-overview",
+        "white-1-e4-sidelines-alekhine-s-defense",
+        "white-1-e4-sidelines-1-b6-1-nc6"
+      ]
+    }
+  ]
+}

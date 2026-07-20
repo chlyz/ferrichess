@@ -36,9 +36,11 @@ pub struct DocumentMerge {
 
 /// All local aggregate documents for a repertoire course.
 ///
-/// `chapters` are also the games in the multi-game course PGN, in declared
-/// metadata order. `full` is ordered Black then White, matching the Python
-/// converter's output order.
+/// `chapters` are the repertoire chapter games in declared metadata order and
+/// form the multi-game repertoire `course.pgn`. This repertoire-specific type
+/// must not be generalized to assume that every kind of course has one game
+/// per chapter: a tactics chapter can itself contain many PGN games. `full` is
+/// ordered Black then White, matching the Python converter's output order.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CourseDocuments {
     pub course_id: String,
@@ -96,8 +98,11 @@ pub fn generate_course_documents(
             continue;
         }
 
-        let side = side_for_chapter(&chapter.id).unwrap_or(default_side);
-        let role = role_for_chapter(&chapter.id);
+        let side = chapter
+            .repertoire_side
+            .or_else(|| side_for_chapter(&chapter.id))
+            .unwrap_or(default_side);
+        let role = role_for_chapter(chapter);
         let title = title_from_slug(&chapter.id);
         let mut tree = MoveTree::new();
         let mut merger = MoveTreeMerger::new(side);
@@ -125,7 +130,13 @@ pub fn generate_course_documents(
         chapters.push(NamedDocument {
             name: name.clone(),
             document: PgnDocument::new(
-                aggregate_headers(&title, &course.title, side, role),
+                aggregate_headers(
+                    &title,
+                    &course.title,
+                    side,
+                    role,
+                    chapter.repertoire_label.as_deref(),
+                ),
                 tree,
                 "*",
             ),
@@ -137,7 +148,10 @@ pub fn generate_course_documents(
     for side in [RepertoireSide::Black, RepertoireSide::White] {
         let selected: Vec<_> = chapters
             .iter()
-            .filter(|chapter| document_side(&chapter.document) == Some(side))
+            .filter(|chapter| {
+                document_side(&chapter.document) == Some(side)
+                    && document_role(&chapter.document) == Some(RepertoireRole::Main)
+            })
             .collect();
         if selected.is_empty() {
             continue;
@@ -166,6 +180,7 @@ pub fn generate_course_documents(
                     &course.title,
                     side,
                     RepertoireRole::Main,
+                    None,
                 ),
                 tree,
                 "*",
@@ -187,6 +202,7 @@ fn aggregate_headers(
     course_title: &str,
     side: RepertoireSide,
     role: RepertoireRole,
+    label: Option<&str>,
 ) -> Headers {
     let mut headers = Headers::new();
     headers.insert("Event", title);
@@ -201,6 +217,9 @@ fn aggregate_headers(
     headers.insert("Orientation", side_text(side));
     headers.insert("RepertoireSide", side_text(side));
     headers.insert("RepertoireRole", role_text(role));
+    if let Some(label) = label {
+        headers.insert("RepertoireLabel", label);
+    }
     headers
 }
 
@@ -208,6 +227,16 @@ fn document_side(document: &PgnDocument) -> Option<RepertoireSide> {
     match document.headers().get("RepertoireSide") {
         Some("White") => Some(RepertoireSide::White),
         Some("Black") => Some(RepertoireSide::Black),
+        _ => None,
+    }
+}
+
+fn document_role(document: &PgnDocument) -> Option<RepertoireRole> {
+    match document.headers().get("RepertoireRole") {
+        Some("Main") => Some(RepertoireRole::Main),
+        Some("Quickstarter") => Some(RepertoireRole::Quickstarter),
+        Some("Alternative") => Some(RepertoireRole::Alternative),
+        Some("Variant") => Some(RepertoireRole::Variant),
         _ => None,
     }
 }
@@ -222,6 +251,8 @@ const fn side_text(side: RepertoireSide) -> &'static str {
 const fn role_text(role: RepertoireRole) -> &'static str {
     match role {
         RepertoireRole::Main => "Main",
+        RepertoireRole::Quickstarter => "Quickstarter",
+        RepertoireRole::Alternative => "Alternative",
         RepertoireRole::Variant => "Variant",
     }
 }
@@ -234,8 +265,17 @@ fn side_for_chapter(chapter: &str) -> Option<RepertoireSide> {
     }
 }
 
-fn role_for_chapter(chapter: &str) -> RepertoireRole {
-    if chapter.ends_with("-variant") {
+fn role_for_chapter(chapter: &super::ChapterMetadata) -> RepertoireRole {
+    if let Some(role) = chapter.repertoire_role {
+        return role;
+    }
+    let id = chapter.id.to_ascii_lowercase();
+    let title = chapter.title.to_ascii_lowercase();
+    if id.contains("quickstarter") || title.contains("quickstarter") {
+        RepertoireRole::Quickstarter
+    } else if id.ends_with("-alternative") || title.contains("[alternative]") {
+        RepertoireRole::Alternative
+    } else if id.ends_with("-variant") {
         RepertoireRole::Variant
     } else {
         RepertoireRole::Main
@@ -410,5 +450,96 @@ mod tests {
             .unwrap();
         assert_eq!(chapter_merge.conflicts.len(), 1);
         assert_eq!(documents.chapters[0].document.tree().len(), 3);
+    }
+
+    #[test]
+    fn course_keeps_every_role_but_side_full_uses_only_main_chapters() {
+        let metadata = CourseMetadata::from_json(
+            r#"{
+                "schemaVersion": 1,
+                "course": {
+                    "id": "roles",
+                    "title": "Role Test",
+                    "kind": "repertoire"
+                },
+                "chapters": [
+                    {"id":"black-main", "title":"Main"},
+                    {"id":"black-quickstarter", "title":"Quickstarter"},
+                    {
+                        "id":"black-other-choice",
+                        "title":"Other choice",
+                        "repertoireRole":"alternative",
+                        "repertoireLabel":"French alternative"
+                    }
+                ],
+                "repertoire": {"side":"Black"}
+            }"#,
+        )
+        .unwrap();
+        let documents = generate_course_documents(
+            &metadata,
+            &[
+                raw("black-main", "001", "1. e4e5"),
+                raw("black-quickstarter", "001", "1. e4c5"),
+                raw("black-other-choice", "001", "1. e4e6"),
+            ],
+        )
+        .unwrap();
+
+        assert_eq!(documents.course_games().len(), 3);
+        assert_eq!(documents.full.len(), 1);
+        let black_full = PgnWriter::render(&documents.full[0].document).unwrap();
+        assert!(black_full.ends_with("1. e4 e5 *"));
+        assert!(!black_full.contains("c5"));
+        assert!(!black_full.contains("e6"));
+
+        assert_eq!(
+            documents.chapters[1]
+                .document
+                .headers()
+                .get("RepertoireRole"),
+            Some("Quickstarter")
+        );
+        assert_eq!(
+            documents.chapters[2]
+                .document
+                .headers()
+                .get("RepertoireLabel"),
+            Some("French alternative")
+        );
+    }
+
+    #[test]
+    fn ordinary_opponent_alternatives_remain_main_chapters() {
+        let metadata = CourseMetadata::from_json(
+            r#"{
+                "schemaVersion": 1,
+                "course": {"id":"main", "title":"Main", "kind":"repertoire"},
+                "chapters": [{
+                    "id":"black-scotch-white-s-early-alternatives",
+                    "title":"Scotch: White's early alternatives"
+                }],
+                "repertoire":{"side":"Black"}
+            }"#,
+        )
+        .unwrap();
+        let documents = generate_course_documents(
+            &metadata,
+            &[raw(
+                "black-scotch-white-s-early-alternatives",
+                "001",
+                "1. e4e5",
+            )],
+        )
+        .unwrap();
+
+        assert_eq!(documents.full.len(), 1);
+        assert_eq!(
+            documents.chapters[0]
+                .document
+                .headers()
+                .get("RepertoireRole"),
+            Some("Main")
+        );
     }
 }

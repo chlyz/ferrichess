@@ -1,3 +1,11 @@
 [workspace]
-members = ["crates/ferrichess-study"]
+members = [
+    "crates/ferrichess-config",
+    "crates/ferrichess-games",
+    "crates/ferrichess-study",
+    "tools/ferrichess-archive",
+    "tools/ferrichess-course-merge",
+    "tools/ferrichess-pgn-index",
+    "tools/ferrichess",
+]
 resolver = "3"

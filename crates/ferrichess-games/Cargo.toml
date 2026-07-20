@@ -1,0 +1,12 @@
+[package]
+name = "ferrichess-games"
+version = "0.1.0"
+edition = "2024"
+description = "Parse and query source-neutral chess game archives"
+license = "GPL-3.0-or-later"
+publish = false
+
+[dependencies]
+pgn-reader = "0.29.0"
+serde = { version = "1.0.228", features = ["derive"] }
+shakmaty = "0.30.1"

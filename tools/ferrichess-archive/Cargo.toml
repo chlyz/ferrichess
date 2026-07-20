@@ -1,0 +1,17 @@
+[package]
+name = "ferrichess-archive"
+version = "0.1.0"
+edition = "2024"
+description = "Synchronize and query a local personal chess-game archive"
+license = "GPL-3.0-or-later"
+publish = false
+
+[dependencies]
+ferrichess-config = { path = "../../crates/ferrichess-config" }
+clap = { version = "4.6.2", features = ["derive", "env"] }
+ferrichess-games = { path = "../../crates/ferrichess-games" }
+ferrichess-pgn-index = { path = "../ferrichess-pgn-index" }
+rusqlite = { version = "0.40.1", features = ["bundled"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+ureq = "3.3.0"

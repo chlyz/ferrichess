@@ -1,0 +1,20 @@
+# Copy to $XDG_CONFIG_HOME/ferrichess/config.toml (usually
+# ~/.config/ferrichess/config.toml). Do not put API tokens in this file.
+
+[lichess]
+username = "your-lichess-name"
+
+[chesscom]
+username = "your-chesscom-name"
+
+# Lichess studies are authoritative repertoire sources. A pull writes an exact
+# study PGN snapshot and a derived FEN index into each configured directory.
+[studies.example-white-course]
+study_id = "abcdefgh"
+directory = "/path/to/chess/repertoires/example-white-course"
+course_directory = "/path/to/chess/courses/example-white-course"
+
+[studies.example-black-course]
+study_id = "hgfedcba"
+directory = "/path/to/chess/repertoires/example-black-course"
+course_directory = "/path/to/chess/courses/example-black-course"

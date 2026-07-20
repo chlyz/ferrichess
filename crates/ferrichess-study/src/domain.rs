@@ -31,10 +31,16 @@ impl From<RepertoireSide> for Color {
     }
 }
 
-/// Whether a chapter is a primary repertoire chapter or a variant chapter.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+/// How a chapter participates in repertoire aggregates.
+///
+/// Only `Main` chapters contribute to side-full repertoire trees. Every role
+/// remains present in the multi-game course document.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum RepertoireRole {
     Main,
+    Quickstarter,
+    Alternative,
     Variant,
 }
 

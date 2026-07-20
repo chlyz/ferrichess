@@ -3,6 +3,8 @@
 `ferrichess-study` converts compact chess study text into legal,
 position-aware move trees and deterministic PGN. It is a library only: it does
 not access the network or filesystem, and it does not include study content.
+The crate is developed publicly but is not currently published to crates.io;
+consume it from a local checkout while its pre-1.0 API evolves.
 
 ## Normal conversion path
 
@@ -100,6 +102,13 @@ For assembling a repertoire from several raw lines, use the advanced
 `generate_course_documents` boundary with `CourseMetadata` and
 `RawCourseLine`. That boundary is pure as well: callers supply all metadata
 and text, then choose how to persist rendered output.
+
+For repertoire courses, chapter games form the ordered multi-game
+`course.pgn`, while `black-full.pgn` and `white-full.pgn` are conflict-free
+trees built only from chapters classified as `Main`. Quickstarter and
+alternative chapters remain in the course document. This repertoire-specific
+assembly does not imply that a chapter is always one game: a tactics chapter
+can contain many puzzle games, and tactics courses have no side-full output.
 
 The first public metadata contract is intentionally small:
 

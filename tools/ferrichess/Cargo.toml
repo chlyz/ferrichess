@@ -1,0 +1,17 @@
+[package]
+name = "ferrichess-cli"
+version = "0.1.0"
+edition = "2024"
+description = "Top-level CLI for pull-only Ferrichess workflows"
+license = "GPL-3.0-or-later"
+publish = false
+
+[[bin]]
+name = "ferrichess"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.6.2", features = ["derive"] }
+ferrichess-config = { path = "../../crates/ferrichess-config" }
+ferrichess-pgn-index = { path = "../ferrichess-pgn-index" }
+ureq = "3.3.0"
