@@ -12,7 +12,7 @@ use ferrichess_study::{
     Annotation, Headers, MoveTree, MoveTreeMerger, PgnDocument, PgnWriter, RepertoireSide, SourceId,
 };
 use serde::{Deserialize, Serialize};
-use shakmaty::{Chess, Position, uci::UciMove};
+use shakmaty::{CastlingMode, Chess, Position, fen::Fen, uci::UciMove};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -91,20 +91,22 @@ fn main() -> Result<(), Box<dyn Error>> {
         for chapter in &group.chapters {
             let path = source_root.join(chapter).join(format!("{chapter}.pgn"));
             let games = parse_games(&fs::read(&path)?)?;
-            if games.len() != 1 {
+            if games.is_empty() {
                 return Err(format!(
-                    "{} contains {} games; repertoire chapters must contain exactly one",
-                    path.display(),
-                    games.len()
+                    "{} contains no games; repertoire chapters must contain at least one",
+                    path.display()
                 )
                 .into());
             }
-            let chapter_tree = tree_from_game(&games[0])?;
-            group_conflicts.extend(
-                merger
-                    .merge(&mut tree, &chapter_tree, SourceId::from(chapter.clone()))?
-                    .conflicts,
-            );
+            for (game_index, game) in games.iter().enumerate() {
+                let chapter_tree = tree_from_game(game)?;
+                let source = format!("{chapter}#{:03}", game_index + 1);
+                group_conflicts.extend(
+                    merger
+                        .merge(&mut tree, &chapter_tree, SourceId::from(source))?
+                        .conflicts,
+                );
+            }
         }
         if !group_conflicts.is_empty() {
             conflicts.push(ConflictReport {
@@ -234,8 +236,14 @@ fn validate_manifest(manifest: &Manifest, source_root: &Path) -> Result<(), Box<
 }
 
 fn tree_from_game(game: &IndexedGame) -> Result<MoveTree, Box<dyn Error>> {
-    if game.headers.contains_key("FEN") {
-        return Err("nonstandard starting positions are not supported yet".into());
+    if let Some(fen) = game.headers.get("FEN") {
+        let position: Chess = fen
+            .parse::<Fen>()?
+            .into_position(CastlingMode::Standard)
+            .map_err(|error| format!("invalid starting FEN {fen:?}: {error}"))?;
+        if position != Chess::default() {
+            return Err("nonstandard starting positions are not supported yet".into());
+        }
     }
     let mut tree = MoveTree::new();
     let root = tree.root();

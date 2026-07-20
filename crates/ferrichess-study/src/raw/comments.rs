@@ -11,7 +11,8 @@ pub(crate) fn normalize(
     position: Option<&Chess>,
     positions_by_ply: Option<&[Chess]>,
 ) -> String {
-    let mut text = split_glued_move_numbers(text);
+    let text = normalize_numbered_unicode_ellipses(text);
+    let mut text = split_glued_move_numbers(&text);
     if let Some(position) = position {
         text = format_embedded_sequences(parser, text, position, positions_by_ply);
     }
@@ -20,6 +21,23 @@ pub(crate) fn normalize(
     text = split_glued_san(&text);
     text = collapse_whitespace(&text);
     remove_space_before_punctuation(&text)
+}
+
+fn normalize_numbered_unicode_ellipses(text: &str) -> String {
+    let bytes = text.as_bytes();
+    let mut output = String::with_capacity(text.len());
+    for (index, ch) in text.char_indices() {
+        if ch == '…'
+            && index > 0
+            && bytes[index - 1].is_ascii_digit()
+            && looks_like_san_start(bytes, index + ch.len_utf8())
+        {
+            output.push_str("...");
+        } else {
+            output.push(ch);
+        }
+    }
+    output
 }
 
 pub(crate) fn split_glued_move_numbers(text: &str) -> String {
@@ -333,7 +351,8 @@ const fn is_piece(byte: u8) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{format_bare_black_markers, split_glued_move_numbers};
+    use super::{format_bare_black_markers, normalize, split_glued_move_numbers};
+    use crate::raw::parser::RawParser;
 
     #[test]
     fn splits_destination_squares_and_castling_from_following_numbers() {
@@ -353,6 +372,14 @@ mod tests {
         assert_eq!(
             format_bare_black_markers("with .. .Rf8 or . .. Bb7"),
             "with ...Rf8 or ...Bb7"
+        );
+    }
+
+    #[test]
+    fn normalizes_a_numbered_unicode_ellipsis_without_changing_prose() {
+        assert_eq!(
+            normalize(&RawParser::new(), "with 3…g6, wait…", None, None),
+            "with 3... g6, wait…"
         );
     }
 }

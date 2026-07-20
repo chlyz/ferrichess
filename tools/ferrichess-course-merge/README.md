@@ -1,8 +1,9 @@
 # ferrichess-course-merge
 
 Build a small set of Lichess-friendly PGN trees from the chapter PGNs of an
-exported repertoire course. Source chapters are merged positionally, so their
-lines become variations within one game rather than separate games.
+exported repertoire course. Every lesson game in each source chapter is merged
+positionally, so its lines become variations within one game rather than
+remaining separate games.
 
 ```sh
 cargo run -p ferrichess-course-merge -- \

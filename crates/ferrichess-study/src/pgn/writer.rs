@@ -155,8 +155,66 @@ fn render_comments(
         .collect::<Vec<_>>()
         .join(" ")
         .replace('}', "");
+    let comment = combine_graphical_directives(&comment);
     output.write_token(&format!("{{ {} }} ", comment.trim()));
     Ok(true)
+}
+
+fn combine_graphical_directives(comment: &str) -> String {
+    let mut prose = String::new();
+    let mut arrows: Vec<&str> = Vec::new();
+    let mut squares: Vec<&str> = Vec::new();
+    let mut remaining = comment;
+    while let Some(start) = remaining.find("[%") {
+        prose.push_str(&remaining[..start]);
+        let Some(relative_end) = remaining[start..].find(']') else {
+            prose.push_str(&remaining[start..]);
+            remaining = "";
+            break;
+        };
+        let end = start + relative_end + 1;
+        let directive = &remaining[start..end];
+        let destination = if let Some(values) = directive
+            .strip_prefix("[%cal ")
+            .and_then(|value| value.strip_suffix(']'))
+        {
+            Some((&mut arrows, values))
+        } else {
+            directive
+                .strip_prefix("[%csl ")
+                .and_then(|value| value.strip_suffix(']'))
+                .map(|values| (&mut squares, values))
+        };
+        if let Some((items, values)) = destination {
+            for item in values
+                .split(',')
+                .map(str::trim)
+                .filter(|item| !item.is_empty())
+            {
+                if !items.contains(&item) {
+                    items.push(item);
+                }
+            }
+            prose.push(' ');
+        } else {
+            prose.push_str(directive);
+        }
+        remaining = &remaining[end..];
+    }
+    prose.push_str(remaining);
+
+    let mut parts = Vec::new();
+    if !arrows.is_empty() {
+        parts.push(format!("[%cal {}]", arrows.join(",")));
+    }
+    if !squares.is_empty() {
+        parts.push(format!("[%csl {}]", squares.join(",")));
+    }
+    let prose = prose.split_whitespace().collect::<Vec<_>>().join(" ");
+    if !prose.is_empty() {
+        parts.push(prose);
+    }
+    parts.join(" ")
 }
 
 struct MovetextWriter {
@@ -265,6 +323,28 @@ mod tests {
                 "1. e4 e6 { This ordinary comment is long enough to move onto its own line ",
                 "instead of being split internally. } 2. d4 b6 *",
             ),
+        );
+    }
+
+    #[test]
+    fn combines_graphical_directives_so_lichess_preserves_every_shape() {
+        let document = convert_single_raw(
+            concat!(
+                "1. e4\n",
+                "@@PlyComment@@1@@[%cal Ge2e4,Ge2e4]\n",
+                "@@PlyComment@@1@@Center control.\n",
+                "@@PlyComment@@1@@[%cal Gd2d4]\n",
+                "@@PlyComment@@1@@[%csl Gd4]\n",
+                "@@PlyComment@@1@@[%csl Re4]",
+            ),
+            &simple_metadata(),
+        )
+        .unwrap();
+
+        assert!(
+            PgnWriter::render(&document)
+                .unwrap()
+                .ends_with("1. e4 { [%cal Ge2e4,Gd2d4] [%csl Gd4,Re4] Center control. } *")
         );
     }
 

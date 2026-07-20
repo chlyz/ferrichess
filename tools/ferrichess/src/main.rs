@@ -10,12 +10,14 @@ use clap::{Parser, Subcommand};
 use ferrichess_config::{Config, StudyConfig};
 use ferrichess_pgn_index::{IndexSource, build_index_from_sources, parse_games};
 
+mod publish;
+
 type AppResult<T> = Result<T, Box<dyn Error>>;
 
 const MAX_STUDY_BYTES: u64 = 100_000_000;
 
 #[derive(Debug, Parser)]
-#[command(about = "Pull authoritative chess studies into local snapshots")]
+#[command(about = "Safely synchronize authoritative Lichess studies")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -37,6 +39,25 @@ enum StudyCommand {
         /// Configured study names. Omit to pull every configured study.
         names: Vec<String>,
     },
+    /// Plan or explicitly replace a configured study from a candidate PGN.
+    Publish {
+        /// Configured study name.
+        name: String,
+        /// Candidate multi-chapter PGN. This never replaces study.pgn directly.
+        candidate: PathBuf,
+        /// Apply a destructive whole-study replacement. Without this, only plan.
+        #[arg(
+            long,
+            requires_all = ["expected_remote_sha256", "confirm_study_id"]
+        )]
+        replace_all: bool,
+        /// Exact live-study fingerprint printed by a preceding publish plan.
+        #[arg(long, requires = "replace_all")]
+        expected_remote_sha256: Option<String>,
+        /// Exact configured study ID, required as destructive confirmation.
+        #[arg(long, requires = "replace_all")]
+        confirm_study_id: Option<String>,
+    },
 }
 
 fn main() {
@@ -48,9 +69,23 @@ fn main() {
 
 fn run(cli: Cli) -> AppResult<()> {
     match cli.command {
-        Command::Study {
-            command: StudyCommand::Pull { names },
-        } => pull_studies(&Config::load_default()?, &names),
+        Command::Study { command } => match command {
+            StudyCommand::Pull { names } => pull_studies(&Config::load_default()?, &names),
+            StudyCommand::Publish {
+                name,
+                candidate,
+                replace_all,
+                expected_remote_sha256,
+                confirm_study_id,
+            } => publish::publish_study(
+                &Config::load_default()?,
+                &name,
+                &candidate,
+                replace_all,
+                expected_remote_sha256.as_deref(),
+                confirm_study_id.as_deref(),
+            ),
+        },
     }
 }
 
@@ -125,7 +160,7 @@ fn validate_study_id(study_id: &str) -> AppResult<()> {
     Ok(())
 }
 
-fn download_study(study_id: &str, token: &str) -> AppResult<String> {
+pub(crate) fn download_study(study_id: &str, token: &str) -> AppResult<String> {
     let url = format!("https://lichess.org/api/study/{study_id}.pgn");
     let mut response = ureq::get(&url)
         .query("clocks", "false")
@@ -148,11 +183,11 @@ fn download_study(study_id: &str, token: &str) -> AppResult<String> {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct PullStats {
-    chapters: usize,
-    positions: i64,
+    pub(crate) chapters: usize,
+    pub(crate) positions: i64,
 }
 
-fn save_study(directory: &Path, pgn: &str) -> AppResult<PullStats> {
+pub(crate) fn save_study(directory: &Path, pgn: &str) -> AppResult<PullStats> {
     let chapters = parse_games(pgn.as_bytes())?.len();
     if chapters == 0 {
         return Err("downloaded study contains no PGN chapters".into());
@@ -187,7 +222,7 @@ fn save_study(directory: &Path, pgn: &str) -> AppResult<PullStats> {
     result
 }
 
-fn load_lichess_token() -> AppResult<String> {
+pub(crate) fn load_lichess_token() -> AppResult<String> {
     if let Ok(token) = env::var("LICHESS_TOKEN") {
         return nonempty_token(token, "LICHESS_TOKEN");
     }

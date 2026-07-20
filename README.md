@@ -19,8 +19,9 @@ The workspace currently provides:
   Lichess games into raw snapshots, PGN, and SQLite; and
 - `ferrichess-pgn-index`, a local CLI that creates a course-specific,
   variation-aware FEN index from one or more annotated PGNs; and
-- `ferrichess`, a pull-only CLI that snapshots authoritative Lichess studies
-  locally and rebuilds their FEN indexes without writing to Lichess.
+- `ferrichess`, a pull-first CLI that snapshots authoritative Lichess studies
+  locally, rebuilds their FEN indexes, and offers explicitly guarded
+  whole-study publishing.
 
 ## Generated PGN contract
 
